@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SolarSaathi v2 — Rooftop Solar Advisor</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f6f8f3;color:#1a2a1a}
+header{background:#14532d;color:#fff;padding:28px 20px}header h1{margin:0;font-size:32px}header p{opacity:.9;max-width:760px}
+.badges span{display:inline-block;background:#facc15;color:#1a2a1a;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin:10px 6px 0 0}
+.wrap{max-width:1020px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:700px){.grid{grid-template-columns:1fr}}
+label{font-weight:600;font-size:14px;display:block;margin:14px 0 6px}input,select{width:100%;padding:11px;border:1px solid #d1d5db;border-radius:10px;font-size:16px}
+button{background:#16a34a;color:#fff;border:0;padding:13px 18px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-top:18px}
+button.sec{background:#fff;color:#14532d;border:2px solid #14532d}
+.results{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}@media(max-width:700px){.results{grid-template-columns:1fr 1fr}}
+.stat{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px}.stat b{font-size:26px;display:block}.stat span{font-size:13px;color:#4b5563}.stat small{color:#6b7280}
+.rec{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px;margin-top:12px}.muted{font-size:13px;color:#6b7280;line-height:1.6}h2{margin:0 0 8px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}th{background:#f9fafb}tr.best{background:#f0fdf4;font-weight:700}
+canvas{width:100%;height:220px}.pill{display:inline-block;background:#dcfce7;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+</style></head><body>
+<header><h1>☀️ SolarSaathi <span style="font-size:16px;opacity:.8">v2</span></h1><p>Rooftop solar advisor for Indian homes. Now with shade + direction, panel comparison, year-round chart, and honest confidence range.</p>
+<div class="badges"><span>SDG 7 — Affordable &amp; Clean Energy</span><span>SDG 13 — Climate Action</span><span>ML model: Ridge regression · R² 0.995 · MAE 39 kWh</span><span>v2: compare panels · seasonal chart · copy summary</span></div></header>
+<div class="wrap">
+<div class="card"><h2>Try it</h2>
+<div class="grid"><div>
+<label>City</label><select id="city"></select>
+<label>Roof area (sq m)</label><input id="area" type="number" value="100" min="10" max="500">
+<label>Monthly electricity bill (₹)</label><input id="bill" type="number" value="3000" min="100" max="100000">
+<label>Roof direction</label><select id="dir"><option value="1.0">South-facing (best)</option><option value="0.97">Flat roof</option><option value="0.93">East / West-facing</option><option value="0.78">North-facing</option></select>
+</div><div>
+<label>Panel type (for main result)</label><select id="panel"><option>Mono (21%)</option><option>Poly (17%)</option><option>Thin-film (12%)</option></select>
+<label>Sunlight — irradiance (kWh/m²/day)</label><input id="irr" type="number" step="0.1" value="5.0">
+<label>Avg temperature (°C)</label><input id="temp" type="number" step="0.5" value="32">
+<label>Shade on roof (%) — trees, tanks, neighbour building</label><input id="shade" type="number" value="10" min="0" max="60">
+</div></div>
+<button onclick="calc()">Predict my solar savings →</button>
+<div id="err" style="color:#b91c1c;font-weight:700;margin-top:10px"></div>
+<div id="out" style="margin-top:16px"></div>
+</div>
+<div class="card"><h2>Compare all 3 panels <span class="pill">NEW in v2</span></h2><p class="muted">Same roof, same bill — which panel pays back fastest?</p><div id="compare"></div></div>
+<div class="card"><h2>Generation through the year <span class="pill">NEW in v2</span></h2><p class="muted">Summer gives more, monsoon (Jun–Aug) gives less. Chart uses seasonal factors for India.</p><canvas id="chart" width="960" height="220"></canvas></div>
+<div class="card"><h2>How good is the model? <span class="pill">Proof, not promises</span></h2><p>Tested on 500 rows the model never saw during training: <b>R² 0.9953, MAE 39.0 kWh</b>. Here are 5 real test rows — predicted vs actual:</p>
+<table><tr><th>Case</th><th>Panel</th><th>Roof</th><th>Actual</th><th>Predicted</th><th>Error</th></tr>
+<tr><td>Lucknow</td><td>Thin-film</td><td>185 m²</td><td>1,929 kWh</td><td>1,857 kWh</td><td>−72</td></tr>
+<tr><td>Ahmedabad</td><td>Mono</td><td>198 m²</td><td>4,208 kWh</td><td>4,107 kWh</td><td>−102</td></tr>
+<tr><td>Bengaluru</td><td>Poly</td><td>114 m²</td><td>1,882 kWh</td><td>1,873 kWh</td><td>−9</td></tr>
+<tr><td>Bengaluru</td><td>Poly</td><td>147 m²</td><td>2,059 kWh</td><td>2,041 kWh</td><td>−18</td></tr>
+<tr><td>Delhi</td><td>Poly</td><td>44 m²</td><td>622 kWh</td><td>610 kWh</td><td>−12</td></tr></table>
+<p class="muted">Dataset is physics-based synthetic (2,500 rows, labelled as such) — not real meter data. See README + train.py for the formula. Confidence range in results is ± MAE (39 kWh).</p>
+<button class="sec" onclick="copySummary()">Copy my summary for PPT / form →</button><p id="copied" class="muted"></p>
+</div>
+<div class="card"><h2>What problem does it solve?</h2><p>Many Indian homeowners want rooftop solar but get vague estimates. SolarSaathi gives a clear, personal number in seconds — with shade, direction, panel choice, and payback — so they can decide before calling an installer.</p></div>
+</div>
+<script>
+const CITIES={"Delhi":[5.0,32.0,8.0],"Mumbai":[4.9,30.0,9.5],"Jaipur":[5.8,31.0,7.5],"Ahmedabad":[5.6,32.5,7.0],"Bengaluru":[5.2,27.0,8.5],"Chennai":[5.1,31.0,9.0],"Hyderabad":[5.3,30.0,8.0],"Kolkata":[4.7,30.5,8.5],"Pune":[5.4,28.0,8.5],"Lucknow":[5.0,31.0,7.5]};
+const PANELS={"Mono (21%)":{eff:0.21,areaPerKw:4.8,costPerKw:60000},"Poly (17%)":{eff:0.17,areaPerKw:5.9,costPerKw:52000},"Thin-film (12%)":{eff:0.12,areaPerKw:8.3,costPerKw:45000}};
+const COEF=[0.5330646808594274,-2.333750030960452,23.448004312284684,-0.017505699391827327,-7.197164610139416,0.8574064348045611,-0.06799639030107789], INTERCEPT=10.832304837136235, MAE=39;
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], SEASON=[0.88,0.95,1.05,1.10,1.12,0.92,0.85,0.85,0.95,1.02,0.95,0.88];
+const citySel=document.getElementById('city');
+Object.keys(CITIES).forEach(c=>{const o=document.createElement('option');o.textContent=c;citySel.appendChild(o)});
+citySel.onchange=()=>{const v=CITIES[citySel.value];document.getElementById('irr').value=v[0];document.getElementById('temp').value=v[1]};
+function predict(usable,irr,temp,eff){const f=[usable*irr,usable*eff,usable*irr*eff,usable*irr*temp,irr,temp,usable];let v=INTERCEPT;f.forEach((x,i)=>v+=COEF[i]*x);return Math.max(0,v);}
+function subsidyFor(kw){return Math.min(78000, Math.min(kw,2)*30000 + Math.max(0,Math.min(kw,3)-2)*18000);}
+function solve(panelName,inputs){
+ const {area,bill,irr,temp,shade,dirF,tariff}=inputs, P=PANELS[panelName];
+ const usable=area*0.70*(1-shade/100);
+ const consumption=bill/tariff, tempF=1-0.004*Math.max(0,temp-25);
+ const roofMax=usable/P.areaPerKw, need=consumption/(irr*30*0.78*tempF*dirF*(1-shade/100));
+ const sysKw=Math.max(0.5,Math.round(Math.min(roofMax,need)*10)/10);
+ const usableForSys=sysKw*P.areaPerKw;
+ let kwh=predict(usableForSys,irr,temp,P.eff)*dirF*(1-shade/100);
+ // If roof is too small to cover bill, generation is roof-limited; if bill is small, it is bill-limited. Both handled by sysKw above.
+ const used=Math.min(kwh,consumption), exported=Math.max(0,kwh-consumption);
+ const savings=Math.round(used*tariff+exported*3.0), net=Math.round(sysKw*P.costPerKw-subsidyFor(sysKw));
+ const payback=savings>0?(net/(savings*12)):0;
+ const roofNeeded=Math.round(sysKw*P.areaPerKw/0.70/(1-shade/100));
+ return {panel:panelName,kwh,savings,sysKw,net,payback,co2:Math.round(kwh*12*0.82),consumption,used,exported,roofNeeded,costPerKw:P.costPerKw};
+}
+let last=null,lastInputs=null;
+function calc(){
+ const city=citySel.value, area=parseFloat(document.getElementById('area').value), bill=parseFloat(document.getElementById('bill').value);
+ const irr=parseFloat(document.getElementById('irr').value), temp=parseFloat(document.getElementById('temp').value);
+ const shade=parseFloat(document.getElementById('shade').value), dirF=parseFloat(document.getElementById('dir').value);
+ const panel=document.getElementById('panel').value, tariff=CITIES[city][2];
+ const errEl=document.getElementById('err'); errEl.textContent="";
+ if(!(area>=10)||!(bill>=100)||!(irr>0)||shade<0||shade>60){errEl.textContent="Please check inputs: roof ≥10 sq m, bill ≥₹100, shade 0–60%.";return;}
+ const inputs={area,bill,irr,temp,shade,dirF,tariff,city};
+ const r=solve(panel,inputs); last=r; lastInputs={...inputs,panel,city};
+ const rec = r.kwh>r.consumption*1.2 ? "Your roof can generate more than you use. You can export extra power." : r.kwh>r.consumption*0.5 ? "Solar covers a large part of your bill. Good fit for rooftop solar." : "Solar will help, but will not cover your full bill. Check shade / direction, or start with a smaller system.";
+ document.getElementById('out').innerHTML=`<div class="results">
+ <div class="stat"><span>Monthly generation (${panel})</span><b>${Math.round(r.kwh).toLocaleString('en-IN')} kWh</b><small>Range ±${MAE} kWh (model MAE)</small></div>
+ <div class="stat"><span>Monthly savings</span><b>₹${r.savings.toLocaleString('en-IN')}</b><small>You use ${Math.round(r.consumption)} kWh/mo</small></div>
+ <div class="stat"><span>System size</span><b>${r.sysKw} kW</b><small>${panel}</small></div>
+ <div class="stat"><span>Cost after subsidy</span><b>₹${r.net.toLocaleString('en-IN')}</b><small>₹${r.costPerKw.toLocaleString('en-IN')}/kW · Subsidy ₹${subsidyFor(r.sysKw).toLocaleString('en-IN')}</small></div>
+ <div class="stat"><span>Payback</span><b>${r.payback.toFixed(1)} years</b><small>Panel life ~25 yrs</small></div>
+ <div class="stat"><span>CO₂ saved / year</span><b>${r.co2.toLocaleString('en-IN')} kg</b><small>= ${(r.co2/22).toFixed(0)} trees / yr*</small></div></div>
+ <div class="rec"><b>Recommendation for ${city}:</b> ${rec}<br><span class="muted">Assumptions: 70% roof usable, minus shade, direction factor ${dirF}, panel price ₹${r.costPerKw.toLocaleString('en-IN')}/kW (Mono ₹60k, Poly ₹52k, Thin-film ₹45k), PM Surya Ghar subsidy up to ₹78,000, export ₹3/kWh, grid 0.82 kg CO₂/kWh. *1 tree ≈ 22 kg CO₂/yr. Get a site survey before buying.</span></div>`;
+ // Compare
+ const rows=Object.keys(PANELS).map(p=>solve(p,inputs)).sort((a,b)=>a.payback-b.payback);
+ document.getElementById('compare').innerHTML=`<table><tr><th>Panel</th><th>Size</th><th>Roof needed</th><th>Generation</th><th>Savings/mo</th><th>Cost after subsidy</th><th>Payback</th></tr>${rows.map((x,i)=>`<tr class="${i===0?'best':''}"><td>${x.panel} ${i===0?'⭐ fastest payback':''}</td><td>${x.sysKw} kW</td><td>${x.roofNeeded} m²</td><td>${Math.round(x.kwh)} kWh</td><td>₹${x.savings.toLocaleString('en-IN')}</td><td>₹${x.net.toLocaleString('en-IN')}</td><td>${x.payback.toFixed(1)} yrs</td></tr>`).join('')}</table><p class="muted">Systems are sized to your bill, so generation is similar. The real difference is roof area needed + price per kW: thin-film is cheapest per kW but needs most roof.</p>`;
+ drawChart(r.kwh);
+}
+function drawChart(avg){
+ const cv=document.getElementById('chart'), ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+ ctx.clearRect(0,0,W,H); const max=Math.max(...SEASON)*avg*1.15;
+ ctx.fillStyle="#14532d"; ctx.font="13px system-ui";
+ MONTHS.forEach((m,i)=>{const h=(SEASON[i]*avg/max)*(H-40), x=20+i*(W-40)/12, y=H-30-h; ctx.fillStyle=i>=5&&i<=7?"#93c5fd":"#16a34a"; ctx.fillRect(x,y,(W-40)/12-10,h); ctx.fillStyle="#374151"; ctx.fillText(m,x,H-10);});
+ ctx.fillStyle="#6b7280"; ctx.fillText("kWh / month — monsoon dips in Jun–Aug",20,16);
+}
+function copySummary(){
+ if(!last){calc();}
+ const s=`SolarSaathi — ${lastInputs.city}, ${lastInputs.area} sq m roof, ₹${lastInputs.bill}/mo bill, ${lastInputs.panel}: ${Math.round(last.kwh)} kWh/mo, ₹${last.savings}/mo savings, ${last.sysKw} kW, ₹${last.net} after subsidy, ${last.payback.toFixed(1)}-yr payback, ${last.co2} kg CO2/yr. Model R² 0.995, MAE 39 kWh.`;
+ navigator.clipboard.writeText(s).then(()=>document.getElementById('copied').textContent="Copied. Paste it into your PPT / form.");
+}
+calc();
+</script></body></html>

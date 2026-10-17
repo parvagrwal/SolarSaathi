@@ -1,0 +1,66 @@
+{
+  "model": "Ridge regression on physics-engineered features",
+  "train_rows": 2000,
+  "test_rows": 500,
+  "r2_test": 0.9953,
+  "mae_kwh_test": 39.04,
+  "mean_monthly_kwh": 1503.3,
+  "dataset": "Physics-based synthetic, 2500 rows, 10 Indian cities. NOT real meter data.",
+  "cities": {
+    "Delhi": [
+      5.0,
+      32.0,
+      8.0
+    ],
+    "Mumbai": [
+      4.9,
+      30.0,
+      9.5
+    ],
+    "Jaipur": [
+      5.8,
+      31.0,
+      7.5
+    ],
+    "Ahmedabad": [
+      5.6,
+      32.5,
+      7.0
+    ],
+    "Bengaluru": [
+      5.2,
+      27.0,
+      8.5
+    ],
+    "Chennai": [
+      5.1,
+      31.0,
+      9.0
+    ],
+    "Hyderabad": [
+      5.3,
+      30.0,
+      8.0
+    ],
+    "Kolkata": [
+      4.7,
+      30.5,
+      8.5
+    ],
+    "Pune": [
+      5.4,
+      28.0,
+      8.5
+    ],
+    "Lucknow": [
+      5.0,
+      31.0,
+      7.5
+    ]
+  },
+  "panels": {
+    "Mono (21%)": 0.21,
+    "Poly (17%)": 0.17,
+    "Thin-film (12%)": 0.12
+  }
+}
